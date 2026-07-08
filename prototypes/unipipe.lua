@@ -135,7 +135,7 @@ local function createItemEntityRecipe(protoName, isInput)
 		},
     -- fluid_box = { volume = 10000, pipe_connections = {} },
     energy_source = { type = "void" },
-    pumping_speed = 200,
+    pumping_speed = 2000000,
     selecttable_in_game = true,
     -- collision_box = {{-0.29, -0.9}, {0.29, 0.9}},
     -- selection_box = {{-0.2, -.2}, {0.2, .2}},

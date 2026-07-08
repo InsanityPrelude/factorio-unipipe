@@ -156,7 +156,7 @@ end
 function Pipe.setFluidFilter(entity, fluidName)
   if fluidName then
     setupLinkConnection(entity, fluidName)
-    entity.set_fluid_filter(1, fluidName and {name = fluidName, force = true} or nil)
+    entity.set_fluid_filter(1, fluidName and {fluid = fluidName} or nil)
   else
     removeLinkConnection(entity)
     entity.set_fluid_filter(1, nil)
@@ -165,8 +165,8 @@ end
 
 local fluidIteratorData = { visited = {}, toVisit = {}, unipipes = {}, fluidTypes = {} }
 function updateUnipipesForSystem(entity)
-  for i = 1, #entity.prototype.fluidbox_prototypes do
-    table.insert(fluidIteratorData.toVisit, {entity = entity, fluidboxIdx = i, networkId = entity.unit_number .. "/" .. i})
+  for i = 1, entity.fluids_count do
+    table.insert(fluidIteratorData.toVisit, {entity = entity, fluidIdx = i, networkId = entity.unit_number .. "/" .. i})
   end
   script.on_nth_tick(1, function(v)
     findConnectedUnipipes(fluidIteratorData.toVisit, fluidIteratorData.unipipes, fluidIteratorData.visited, fluidIteratorData.fluidTypes)
@@ -175,6 +175,7 @@ function updateUnipipesForSystem(entity)
 
       for _, pipeData in pairs(fluidIteratorData.unipipes) do
         local fluidType = fluidIteratorData.fluidTypes[pipeData.networkId]
+        -- game.players[1].print(string.format("attempting to set unipipe fluid: %s to %s", pipeData.pipe.name, fluidType or "EMPTY"))
         if fluidType then
           Pipe.setFluidFilter(pipeData.pipe, fluidType)
         end
@@ -190,10 +191,10 @@ function findConnectedUnipipes(toVisit, unipipes, visited, fluidTypes)
   while #toVisit > 0 and visitCounter < maxVisitsPerTick do
     local visit = table.remove(toVisit)
     local entity = visit.entity
-    local fluidboxIdx = visit.fluidboxIdx
-    if not entity.valid then goto continue end
+    local fluidIdx = visit.fluidIdx
+    if not entity.valid or entity.fluids_count == 0 then goto continue end
 
-    local key = entity.unit_number .. '/' .. fluidboxIdx
+    local key = entity.unit_number .. '/' .. fluidIdx
     if visited[key] then
       if visited[key] ~= visit.networkId then
         -- We reached a fluidbox visited as part of a different network. Merge ours with it.
@@ -221,15 +222,15 @@ function findConnectedUnipipes(toVisit, unipipes, visited, fluidTypes)
       table.insert(unipipes, { pipe = entity, networkId = visit.networkId })
     end
 
-    if not fluidTypes[visit.networkId] and not isUnipipe and entity.get_fluid_filter(fluidboxIdx) then
-      fluidTypes[visit.networkId] = entity.get_fluid_filter(fluidboxIdx).name
+    if not fluidTypes[visit.networkId] and not isUnipipe and entity.get_fluid_filter(fluidIdx) then
+      fluidTypes[visit.networkId] = entity.get_fluid_filter(fluidIdx).fluid.name
     end
-    if not fluidTypes[visit.networkId] and not isUnipipe and entity.get_fluid(fluidboxIdx) then
-      fluidTypes[visit.networkId] = entity.get_fluid(fluidboxIdx).name
+    if not fluidTypes[visit.networkId] and not isUnipipe and entity.get_fluid(fluidIdx) then
+      fluidTypes[visit.networkId] = entity.get_fluid(fluidIdx).name
     end
-    for _, connection in pairs(entity.get_fluid_box_pipe_connections(fluidboxIdx) or {}) do
+    for _, connection in pairs(entity.get_fluid_box_pipe_connections(fluidIdx) or {}) do
       if connection.target and connection.connection_type ~= "linked" then
-        table.insert(toVisit, {entity = connection.target, fluidboxIdx = connection.target_fluidbox_index, networkId = visit.networkId})
+        table.insert(toVisit, {entity = connection.target, fluidIdx = connection.target_fluidbox_index, networkId = visit.networkId})
       end
     end
     ::continue::
