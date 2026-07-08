@@ -38,21 +38,25 @@ function destroyLinkedPipe(linkedPipe)
   linkedPipe.destroy()
 end
 
+function hasFluidbox(entity)
+  return entity.valid and entity.prototype.fluidbox_prototypes ~= nil and #entity.prototype.fluidbox_prototypes > 0
+end
+
 function removeLinkConnection(entity)
-  if entity.fluidbox == nil then return end
-  for i, v in ipairs(entity.fluidbox.get_linked_connections()) do
-    if v.other_entity.prototype.name == Config.HIDDEN_LINKED_PIPE_NAME then
-      entity.fluidbox.remove_linked_connection(i)
-      entity.clear_fluid_inside()
+  if not hasFluidbox(entity) then return end
+  for _, v in ipairs(entity.get_fluid_box_linked_connections()) do
+    if v.other_entity and v.other_entity.valid and v.other_entity.prototype.name == Config.HIDDEN_LINKED_PIPE_NAME then
+      entity.remove_fluid_box_linked_connection(v.this_linked_connection_id)
+      entity.clear_fluids()
       destroyLinkedPipe(v.other_entity)
     end
   end
 end
 
 function getLinkConnection(entity)
-  if entity.fluidbox == nil then return end
-  for _, v in ipairs(entity.fluidbox.get_linked_connections()) do
-    if v.other_entity.prototype.name == Config.HIDDEN_LINKED_PIPE_NAME then
+  if not hasFluidbox(entity) then return end
+  for _, v in ipairs(entity.get_fluid_box_linked_connections()) do
+    if v.other_entity and v.other_entity.valid and v.other_entity.prototype.name == Config.HIDDEN_LINKED_PIPE_NAME then
       return {fluidId = fluidIdFromLinkedPipe(v.other_entity)}
     end
   end
@@ -105,7 +109,7 @@ function setupLinkConnection(entity, fluidName)
 		force = entity.force,
 		create_build_effect_smoke = false,
 	}
-	linkedPipe.fluidbox.add_linked_connection(1, entity, 1)
+	linkedPipe.add_fluid_box_linked_connection(1, entity, 1)
 
 	return linkedPipe
 end
@@ -126,43 +130,43 @@ end)
 
 function Pipe.onBuiltEntity(event, entity)
   if entity.name == Config.PIPE_FILL_NAME or entity.name == Config.PIPE_EXTRACT_NAME then Pipe.onBuiltPipe(event, entity)
-  elseif entity.fluidbox and entity.fluidbox.valid and #entity.fluidbox > 0 then Pipe.onBuiltFluidbox(event, entity)
+  elseif hasFluidbox(entity) then Pipe.onBuiltFluidbox(event, entity)
   end
 end
 
 function Pipe.onBuiltPipe(event, entity)
   script.register_on_object_destroyed(entity)
-  local filter = entity.fluidbox.get_filter(1)
+  local filter = entity.get_fluid_filter(1)
   Pipe.setFluidFilter(entity, filter and filter.name)
   if settings.global["zy-unipipe-autofilter-mode"].value ~= "disabled" then
-    updateUnipipesForSystem(entity.fluidbox)
+    updateUnipipesForSystem(entity)
   end
 end
 
 function Pipe.onBuiltFluidbox(event, entity)
   if settings.global["zy-unipipe-autofilter-mode"].value == "any" then
-    updateUnipipesForSystem(entity.fluidbox)
+    updateUnipipesForSystem(entity)
   end
 end
 
 function Pipe.updateFluidFilter(entity)
-  updateUnipipesForSystem(entity.fluidbox)
+  updateUnipipesForSystem(entity)
 end
 
 function Pipe.setFluidFilter(entity, fluidName)
   if fluidName then
     setupLinkConnection(entity, fluidName)
-    entity.fluidbox.set_filter(1, fluidName and {name = fluidName, force = true} or nil)
+    entity.set_fluid_filter(1, fluidName and {name = fluidName, force = true} or nil)
   else
     removeLinkConnection(entity)
-    entity.fluidbox.set_filter(1, nil)
+    entity.set_fluid_filter(1, nil)
   end
 end
 
 local fluidIteratorData = { visited = {}, toVisit = {}, unipipes = {}, fluidTypes = {} }
-function updateUnipipesForSystem(fluidbox)
-  for i = 1, #fluidbox do
-    table.insert(fluidIteratorData.toVisit, {fluidbox = fluidbox, fluidboxIdx = i, networkId = fluidbox.owner.unit_number .. "/" .. i})
+function updateUnipipesForSystem(entity)
+  for i = 1, #entity.prototype.fluidbox_prototypes do
+    table.insert(fluidIteratorData.toVisit, {entity = entity, fluidboxIdx = i, networkId = entity.unit_number .. "/" .. i})
   end
   script.on_nth_tick(1, function(v)
     findConnectedUnipipes(fluidIteratorData.toVisit, fluidIteratorData.unipipes, fluidIteratorData.visited, fluidIteratorData.fluidTypes)
@@ -185,11 +189,11 @@ function findConnectedUnipipes(toVisit, unipipes, visited, fluidTypes)
   local visitCounter = 0
   while #toVisit > 0 and visitCounter < maxVisitsPerTick do
     local visit = table.remove(toVisit)
-    local fluidbox = visit.fluidbox
+    local entity = visit.entity
     local fluidboxIdx = visit.fluidboxIdx
-    if not fluidbox.valid or not fluidbox.owner then goto continue end
+    if not entity.valid then goto continue end
 
-    local key = fluidbox.owner.unit_number .. '/' .. fluidboxIdx
+    local key = entity.unit_number .. '/' .. fluidboxIdx
     if visited[key] then
       if visited[key] ~= visit.networkId then
         -- We reached a fluidbox visited as part of a different network. Merge ours with it.
@@ -212,21 +216,20 @@ function findConnectedUnipipes(toVisit, unipipes, visited, fluidTypes)
     visited[key] = visit.networkId
     visitCounter = visitCounter + 1
 
-    local isUnipipe = fluidbox.owner and Config.isPipeName(fluidbox.owner.name)
+    local isUnipipe = entity and Config.isPipeName(entity.name)
     if isUnipipe then
-      table.insert(unipipes, { pipe = fluidbox.owner, networkId = visit.networkId })
+      table.insert(unipipes, { pipe = entity, networkId = visit.networkId })
     end
 
-    -- if not fluidType and not isUnipipe and fluidbox.get_locked_fluid(i) then fluidType = fluidbox.get_locked_fluid(i) end
-    if not fluidTypes[visit.networkId] and not isUnipipe and fluidbox.get_filter(fluidboxIdx) then
-      fluidTypes[visit.networkId] = fluidbox.get_filter(fluidboxIdx).name
+    if not fluidTypes[visit.networkId] and not isUnipipe and entity.get_fluid_filter(fluidboxIdx) then
+      fluidTypes[visit.networkId] = entity.get_fluid_filter(fluidboxIdx).name
     end
-    if not fluidTypes[visit.networkId] and not isUnipipe and fluidbox[fluidboxIdx] then
-      fluidTypes[visit.networkId] = fluidbox[fluidboxIdx].name
+    if not fluidTypes[visit.networkId] and not isUnipipe and entity.get_fluid(fluidboxIdx) then
+      fluidTypes[visit.networkId] = entity.get_fluid(fluidboxIdx).name
     end
-    for _, connection in pairs(fluidbox.get_pipe_connections(fluidboxIdx) or {}) do
+    for _, connection in pairs(entity.get_fluid_box_pipe_connections(fluidboxIdx) or {}) do
       if connection.target and connection.connection_type ~= "linked" then
-        table.insert(toVisit, {fluidbox = connection.target, fluidboxIdx = connection.target_fluidbox_index, networkId = visit.networkId})
+        table.insert(toVisit, {entity = connection.target, fluidboxIdx = connection.target_fluidbox_index, networkId = visit.networkId})
       end
     end
     ::continue::
@@ -237,7 +240,7 @@ function onEntityDestroyed(event)
   if event.type ~= defines.target_type.entity then return end
 
   table.each(getHiddenSurface().find_entities_filtered{name = Config.HIDDEN_LINKED_PIPE_NAME}, function(linkedPipe)
-    if #linkedPipe.fluidbox.get_linked_connections() == 0 then
+    if #linkedPipe.get_fluid_box_linked_connections() == 0 then
       destroyLinkedPipe(linkedPipe)
     end
   end)
@@ -248,10 +251,10 @@ script.on_event(defines.events.on_object_destroyed, function(event)
 end)
 
 function Pipe.openGui(player, entity)
-  local lastFilter = entity.fluidbox.get_filter(1)
+  local lastFilter = entity.get_fluid_filter(1)
   script.on_event(defines.events.on_tick, function(event)
     if not entity.valid then return end
-    local filter = entity.fluidbox.get_filter(1)
+    local filter = entity.get_fluid_filter(1)
     if (filter and filter.name) ~= (lastFilter and lastFilter.name) then
       -- Player changed the filter, update the unipipe.
       lastFilter = filter

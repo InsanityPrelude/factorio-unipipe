@@ -13,7 +13,7 @@ script.on_event(defines.events.script_raised_built, onBuiltEntity)
 
 script.on_event(defines.events.on_entity_settings_pasted, function(event)
   if not Config.isPipeName(event.destination.name) then return end
-  local filter = event.destination.fluidbox.get_filter(1)
+  local filter = event.destination.get_fluid_filter(1)
   Pipe.setFluidFilter(event.destination, filter and filter.name)
 end)
 

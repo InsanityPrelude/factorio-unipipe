@@ -1,5 +1,0 @@
-#!/bin/sh
-name=Unipipe_1.0.8
-./zip.sh
-mv ${name}.zip 'C:\Users\mpcom\AppData\Roaming\Factorio\mods'
-start "steam://rungameid/427520"
