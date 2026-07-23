@@ -119,7 +119,7 @@ local function createItemEntityRecipe(protoName, isInput)
 		fluid_box =
 		{
 			max_pipeline_extent = 4294967295,
-			volume = 20,
+      volume = 1000,
 			pipe_covers = pipecoverspictures(),
 			pipe_connections =
         isInput and
