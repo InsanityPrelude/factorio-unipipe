@@ -14,7 +14,8 @@ script.on_event(defines.events.script_raised_built, onBuiltEntity)
 script.on_event(defines.events.on_entity_settings_pasted, function(event)
   if not Config.isPipeName(event.destination.name) then return end
   local filter = event.destination.get_fluid_filter(1)
-  Pipe.setFluidFilter(event.destination, filter and filter.name)
+  local fluidName = filter and (type(filter.fluid) == "string" and filter.fluid or (filter.fluid and filter.fluid.name))
+  Pipe.setFluidFilter(event.destination, fluidName)
 end)
 
 function initGui(player)
@@ -33,6 +34,7 @@ script.on_init(function(event)
   for i, player in pairs(game.players) do
     initGui(player)
   end
+  Pipe.reconcileAllFilters()
 end)
 
 script.on_configuration_changed(function(event)
@@ -46,6 +48,7 @@ script.on_configuration_changed(function(event)
       Pipe.updateFluidFilter(v)
     end)
   end
+  Pipe.reconcileAllFilters()
 end)
 
 script.on_event(defines.events.on_player_created, function(event)
