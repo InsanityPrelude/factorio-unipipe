@@ -14,8 +14,7 @@ script.on_event(defines.events.script_raised_built, onBuiltEntity)
 script.on_event(defines.events.on_entity_settings_pasted, function(event)
   if not Config.isPipeName(event.destination.name) then return end
   local filter = event.destination.get_fluid_filter(1)
-  local fluidName = filter and (type(filter.fluid) == "string" and filter.fluid or (filter.fluid and filter.fluid.name))
-  Pipe.setFluidFilter(event.destination, fluidName)
+  Pipe.setFluidFilter(event.destination, Pipe.getFluidNameFromFilter(filter))
 end)
 
 function initGui(player)

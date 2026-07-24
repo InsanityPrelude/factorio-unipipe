@@ -1,11 +1,5 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.1.1
-Date: 2026-07-23
-  Fixes:
-    - Corrected player-facing text spelling from "Extracter" to "Extractor" (locale/README only;
-    internal prototype IDs unchanged for save compatibility). (Muwahaha, at last.)
----------------------------------------------------------------------------------------------------
-Version: 1.1.1
+Version: 1.1.0
 Date: 2026-07-23
   Fixes:
     - Updated for Factorio 2.1 runtime API changes by replacing removed LuaEntity::fluidbox table
@@ -23,6 +17,8 @@ Date: 2026-07-23
     - Increased internal buffer volume from 20 to 500 units to fix throughput bottleneck.
   Changes:
     - Raised base dependency to 2.1+.
+    - Corrected player-facing text spelling from "Extracter" to "Extractor" (locale/README only;
+    internal prototype IDs unchanged for save compatibility). 
 ---------------------------------------------------------------------------------------------------
 Version: 1.0.9
 Date: 2026-03-31

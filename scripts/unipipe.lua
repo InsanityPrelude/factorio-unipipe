@@ -7,7 +7,7 @@ local util = require("__core__/lualib/util")
 Pipe = {}
 
     -- Normalize 2.1 filter objects into a string
-local function getFluidNameFromFilter(filter)
+function Pipe.getFluidNameFromFilter(filter)
   if not filter then return nil end
   local fluid = filter.fluid or filter.name
   if type(fluid) == "string" then return fluid end
@@ -27,7 +27,7 @@ local function getFluidSegmentFilterSafe(entity, fluidboxIdx)
 end
 
     -- Get the fluid name for a given fluidbox index, using the recipe as a fallback if no filter is set.
-local function fluidNameFromRecipeForFluidbox(entity, fluidboxIdx, incomingPipeConnectionIdx)
+local function getFluidNameFromRecipeForFluidbox(entity, fluidboxIdx, incomingPipeConnectionIdx)
   if not entity.get_recipe then return nil end
   -- Some fluidbox-owning entities expose get_recipe but throw when called.
   local ok, recipe = pcall(entity.get_recipe)
@@ -35,7 +35,7 @@ local function fluidNameFromRecipeForFluidbox(entity, fluidboxIdx, incomingPipeC
   if not recipe then return nil end
 
   local segmentFilter = getFluidSegmentFilterSafe(entity, fluidboxIdx)
-  local segmentFluidName = getFluidNameFromFilter(segmentFilter)
+  local segmentFluidName = Pipe.getFluidNameFromFilter(segmentFilter)
   if segmentFluidName then return segmentFluidName end
 
   local fluidboxPrototype = entity.get_fluid_box_prototype(fluidboxIdx)
@@ -239,7 +239,7 @@ end
 function Pipe.onBuiltPipe(event, entity)
   script.register_on_object_destroyed(entity)
   local filter = entity.get_fluid_filter(1)
-  Pipe.setFluidFilter(entity, getFluidNameFromFilter(filter))
+  Pipe.setFluidFilter(entity, Pipe.getFluidNameFromFilter(filter))
   if settings.global["zy-unipipe-autofilter-mode"].value ~= "disabled" then
     updateUnipipesForSystem(entity)
   end
@@ -261,7 +261,7 @@ function Pipe.reconcileAllFilters()
     local entities = surface.find_entities_filtered{name = {Config.PIPE_FILL_NAME, Config.PIPE_EXTRACT_NAME}}
     for _, entity in pairs(entities) do
       if entity.valid then
-        local filterName = getFluidNameFromFilter(entity.get_fluid_filter(1))
+        local filterName = Pipe.getFluidNameFromFilter(entity.get_fluid_filter(1))
         -- Safety behavior: only ever add/repair links here.
         if filterName then
           setupLinkConnection(entity, filterName)
@@ -342,7 +342,7 @@ function findConnectedUnipipes(toVisit, unipipes, visited, fluidTypes)
 
     local fluidFilter = entity.get_fluid_filter(fluidboxIdx)
     if not fluidTypes[visit.networkId] and not isUnipipe and fluidFilter then
-      fluidTypes[visit.networkId] = getFluidNameFromFilter(fluidFilter)
+      fluidTypes[visit.networkId] = Pipe.getFluidNameFromFilter(fluidFilter)
     end
     local fluid = entity.get_fluid(fluidboxIdx)
     if not fluidTypes[visit.networkId] and not isUnipipe and fluid then
@@ -351,13 +351,13 @@ function findConnectedUnipipes(toVisit, unipipes, visited, fluidTypes)
 
     if not fluidTypes[visit.networkId] and not isUnipipe then
       local segmentFilter = getFluidSegmentFilterSafe(entity, fluidboxIdx)
-      local segmentFluidName = getFluidNameFromFilter(segmentFilter)
+      local segmentFluidName = Pipe.getFluidNameFromFilter(segmentFilter)
       if segmentFluidName then
         fluidTypes[visit.networkId] = segmentFluidName
       end
     end
     if not fluidTypes[visit.networkId] and not isUnipipe then
-      local fluidName = fluidNameFromRecipeForFluidbox(entity, fluidboxIdx, visit.pipeConnectionIdx)
+      local fluidName = getFluidNameFromRecipeForFluidbox(entity, fluidboxIdx, visit.pipeConnectionIdx)
       if fluidName then
         fluidTypes[visit.networkId] = fluidName
       end
@@ -391,11 +391,11 @@ script.on_event(defines.events.on_object_destroyed, function(event)
 end)
 
 function Pipe.openGui(player, entity)
-  local lastFilterName = getFluidNameFromFilter(entity.get_fluid_filter(1))
+  local lastFilterName = Pipe.getFluidNameFromFilter(entity.get_fluid_filter(1))
   local onTickHandler = function(event)
     if not entity.valid then return end
     local currentFilter = entity.get_fluid_filter(1)
-    local currentFilterName = getFluidNameFromFilter(currentFilter)
+    local currentFilterName = Pipe.getFluidNameFromFilter(currentFilter)
     if currentFilterName ~= lastFilterName then
       lastFilterName = currentFilterName
       Pipe.setFluidFilter(entity, currentFilterName)
